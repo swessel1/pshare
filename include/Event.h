@@ -23,6 +23,8 @@
 #ifndef EVENT_H
 #define EVENT_H
 
+#include <string>
+
 class EventRegistrar;
 
 /**
@@ -37,11 +39,24 @@ class Event {
 
     public:
         /**
+         * @brief Flags that indicate the nature of the event.
+         */
+        enum Flags {
+            NODE_DISCONNECT,
+            NODE_MSG_RECEIVED,
+            TCP_NEW_NODE,
+            TCP_LISTEN_FAIL
+        };
+        
+        /**
          * @brief Constructor.
          *
          * @param[in]   registrar   The registrar (originator) of this event.
+         * @param[in]   data        The data carried by the event.
+         * @param[in]   flag        Flag that indicates the nature of this
+         *                          event.
          */
-        Event(EventRegistrar &registrar);
+        Event(EventRegistrar &registrar, void *data, Event::Flags flag);
 
         /**
          * @brief Returns the registrar (originator) of this event.
@@ -50,9 +65,29 @@ class Event {
          */
         EventRegistrar& get_registrar() const;
 
+        /**
+         * @brief Gets the flag of the event.
+         *
+         * @return An `Event::Flag` that indicates the nature of this event.
+         */
+        Event::Flags get_flag() const;
+
+        /**
+         * @brief Gets the data carried by the event.
+         *
+         * @return `void` pointer to the data.
+         */
+        void* get_data();
+
     private:
         /// The registrar of this event.
         EventRegistrar& registrar;
+
+        /// Data carried by the event.
+        void *data;
+
+        /// Flag that indicates the nature of the event.
+        Event::Flags flag;
 
 };
 

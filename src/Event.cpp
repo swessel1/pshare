@@ -22,10 +22,20 @@
 
 #include "Event.h"
 
-Event::Event(EventRegistrar &registrar) :
-    registrar(registrar) { }
+Event::Event(EventRegistrar &registrar, void *data, Event::Flags flag) :
+    registrar(registrar), data(data), flag(flag) { }
 
 EventRegistrar& Event::get_registrar() const {
 
     return registrar;
+}
+
+void* Event::get_data() {
+
+    return data;
+}
+
+Event::Flags Event::get_flag() const {
+
+    return flag;
 }

@@ -55,17 +55,19 @@ class NetworkStructure : public EventRegistrar {
          *
          * Constructs a network structure with a parent node.
          *
-         * @param[in]   node    Pointer to the parent node of this network
-         *                      structure.
-         * @param[in]   term    Indicates whether this node is a terminator
-         *                      or not. A terminator node is one that does
-         *                      not accept and child nodes (i.e. receive
-         *                      only). Terminator nodes are not considered
-         *                      as candidates during parent change.
-         * @param[in]   queue   The event queue for this registrar.
+         * @param[in]   parent_addr     Parent node address.
+         * @param[in]   term            Indicates whether this node is a
+         *                              terminator or not. A terminator node is
+         *                              one that does not accept and child nodes
+         *                              (i.e. receive only). Terminator nodes
+         *                              are not considered as candidates during
+         *                              parent change.
+         * @param[in]   queue           The event queue for this registrar.
          *
          */
-        NetworkStructure(Node *node, bool term, BlockingQueue<Event> &queue);
+        NetworkStructure(struct sockaddr_in parent_addr,
+                         bool term,
+                         BlockingQueue<Event> &queue);
 
         /**
          * @brief Destructor.
@@ -78,13 +80,9 @@ class NetworkStructure : public EventRegistrar {
         /**
          * @brief Starts the networking.
          *
-         * Attempts to connect with the parent node (if any) and initiates a
-         * handshake. As a result of the handshake, generation, sibling number,
-         * ancestry and siblings are determined. All network related operations
-         * are now controlled by the network structure.
-         *
-         * If the node is not a terminator, a TcpListener will be started to
-         * listen for incoming connections.
+         * Attempts to connect with the parent node (if any). If the node is not
+         * a terminator, a TcpListener will be started to listen for incoming
+         * connections.
          */
         bool start();
 
@@ -126,6 +124,13 @@ class NetworkStructure : public EventRegistrar {
         BlockingQueue<Event>& get_network_queue();
 
     private:
+        /**
+         * @brief Handles event queue for the network.
+         *
+         * This function will block execution of the thread.
+         */
+        void control();
+        
         /// The event queue that is handled by the network structure.
         BlockingQueue<Event> network_queue;
     
@@ -155,6 +160,9 @@ class NetworkStructure : public EventRegistrar {
 
         /// The TcpListener that was initiated (or not) by this network.
         TcpListener *tcp_listener;
+
+        /// The port that the TcpListener will bind to.
+        unsigned short tcp_port = 26005;
 
 };
 

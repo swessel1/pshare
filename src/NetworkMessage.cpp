@@ -36,7 +36,7 @@ NetworkMessage::NetworkMessage(uint8_t header, FILE *payload) :
 NetworkMessage::~NetworkMessage() {
 
     if (payload != NULL)
-        fclose(payload)
+        fclose(payload);
 }
 
 uint8_t NetworkMessage::get_header() const {

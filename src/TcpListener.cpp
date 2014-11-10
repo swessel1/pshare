@@ -20,6 +20,7 @@
  * pshare. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include <iostream>
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
@@ -27,7 +28,6 @@
 #include <netinet/in.h>
 #include <thread>
 #include "TcpListener.h"
-#include "TcpListenerEvent.h"
 #include "Node.h"
 
 TcpListener::TcpListener(BlockingQueue<Event> &event_queue,
@@ -67,17 +67,17 @@ void TcpListener::stop() {
 }
 
 void TcpListener::listen() {
-
-    while (::listen(sd, 0)) {
-
+    
+    while (::listen(sd, 0) >= 0) {
+        
         struct sockaddr_in addr_recv;
         socklen_t addr_size = sizeof(addr);
         
         int sock_recv = accept(sd, (struct sockaddr *) &addr_recv, &addr_size);
-
+        
         /* create a new node */
         Node *node = new Node(sock_recv, addr_recv, event_queue);
-        TcpListenerEvent event(*this, node, TcpListenerEvent::NEW_CONNECTION);
+        Event event(*this, node, Event::TCP_NEW_NODE);
 
         register_event(event);
     }

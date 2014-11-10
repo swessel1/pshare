@@ -8,11 +8,13 @@ int main() {
 
     BlockingQueue<Event> event_queue;
 
-    //parent node
-    Node *parent = new Node(0, (struct sockaddr_in){AF_INET, htons(15555), {inet_addr("127.0.0.1")}}, event_queue);
-
-    NetworkStructure ns(parent, false, event_queue);
+    NetworkStructure ns(event_queue);
     ns.start();
+
+    while (true) {
+
+        event_queue.front();
+    }
     
     return 0;
 }

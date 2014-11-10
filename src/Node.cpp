@@ -28,7 +28,6 @@
 #include <thread>
 #include <unistd.h>
 #include "Node.h"
-#include "NodeEvent.h"
 
 Node::Node(int sd, struct sockaddr_in addr, BlockingQueue<Event> &queue) :
     EventRegistrar(queue), sd(sd), addr(addr) { }
@@ -55,10 +54,6 @@ bool Node::open() {
     if (connect(sd, (struct sockaddr *) &addr, sizeof(addr)) < 0)
         return false;
 
-    /* start listening for incoming messages on a separate thread */
-    std::thread t(&Node::listen, this);
-    t.detach();
-
     return true;
 }
 
@@ -78,12 +73,17 @@ void Node::listen() {
             break; // oops!
 
         /* register an event indicating new message */
-        NodeEvent event(*this, msg, NodeEvent::MSG_RECEIVED);
+        Event event(*this, msg, Event::NODE_MSG_RECEIVED);
         register_event(event);
     }
 
-    NodeEvent event(*this, this, NodeEvent::NODE_DISCONNECT);
+    Event event(*this, this, Event::NODE_DISCONNECT);
     register_event(event);
 
     ::close(sd);
+}
+
+bool Node::send(NetworkMessage &msg) {
+
+    return msg.send(sd);
 }

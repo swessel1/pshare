@@ -20,16 +20,20 @@
  * pshare. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include <iostream>
+#include <thread>
 #include "NetworkStructure.h"
 
 NetworkStructure::NetworkStructure(BlockingQueue<Event> &queue) :
-    EventRegistrar(queue) { }
+    EventRegistrar(queue), terminator(false) { }
 
-NetworkStructure::NetworkStructure(Node *node,
+NetworkStructure::NetworkStructure(struct sockaddr_in parent_addr,
                                    bool term,
                                    BlockingQueue<Event> &queue) :
     EventRegistrar(queue), terminator(term) {
 
+    /* create node and push into ancestry */
+    Node *node = new Node(0, parent_addr, network_queue);
     ancestry.push_back(node);
 }
 
@@ -46,9 +50,47 @@ BlockingQueue<Event>& NetworkStructure::get_network_queue() {
 bool NetworkStructure::start() {
 
     /* if there are any parent nodes, connect to it */
-    if (ancestry.size() > 0)
-        ancestry[0]->open();
+    if (ancestry.size() > 0) {
+        
+        if (!ancestry[0]->open()) {
+            std::cout <<
+                "[FATAL] failed to connect to parent node"
+            << std::endl;
+            return false;
+        } else {
+            /* start listening for incoming messages on separate thread */
+            std::thread t(&Node::listen, ancestry[0]);
+            t.detach();
+        }
+    }
 
+    /* start tcp listener if not terminator node */
+    if (!terminator) {
+        
+        tcp_listener = new TcpListener(network_queue, tcp_port);
+
+        if (!tcp_listener->start()) {
+
+            std::cout <<
+                "[FATAL] Unable to bind to port " << tcp_port
+            << std::endl;
+
+            return false;
+        }
+    }
+
+    std::thread network_control_thread(&NetworkStructure::control, this);
+    network_control_thread.detach();
 
     return true;
+}
+
+void NetworkStructure::control() {
+
+    while (true) {
+
+        Event &e = network_queue.front();
+
+        network_queue.pop();
+    }
 }
