@@ -69,43 +69,16 @@ void Node::close() {
 
 void Node::listen() {
 
-    ssize_t     recv_len;
-    uint8_t     header;
-    uint32_t    msg_size;
-    char        buffer[BUFFER_SIZE];
-
     while (true) {
 
-        /* receive header */
-        if (recv(sd, &header, sizeof(uint8_t), 0) <= 0)
-            break;
+        /* construct empty message and let it receive from socket */
+        NetworkMessage *msg = new NetworkMessage();
+        
+        if (!msg->recv(sd))
+            break; // oops!
 
-        /* receive message size */
-        if (recv(sd, &msg_size, sizeof(uint32_t), 0) <= 0)
-            break;
-
-        FILE* tmp = tmpfile();
-        msg_size  = ntohl(msg_size);
-
-        while (msg_size > 0) {
-
-            recv_len = recv(sd, buffer, BUFFER_SIZE, 0);
-
-            if (recv_len <= 0) {
-
-                /* connection was terminated */
-                fclose(tmp);
-                break;
-            }
-
-            fwrite(buffer, 1, recv_len, tmp);
-
-            msg_size -= recv_len;
-        }
-
-        /* construct a message and register an event */
-        NetworkMessage *message = new NetworkMessage(header, tmp);
-        NodeEvent event(*this, message, NodeEvent::MSG_RECEIVED);
+        /* register an event indicating new message */
+        NodeEvent event(*this, msg, NodeEvent::MSG_RECEIVED);
         register_event(event);
     }
 

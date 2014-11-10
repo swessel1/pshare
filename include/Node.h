@@ -27,8 +27,6 @@
 #include "EventRegistrar.h"
 #include "NetworkMessage.h"
 
-#define BUFFER_SIZE 1024
-
 /**
  * @class   Node
  *

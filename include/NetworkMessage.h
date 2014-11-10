@@ -23,6 +23,8 @@
 #ifndef NETWORKMESSAGE_H
 #define NETWORKMESSAGE_H
 
+#define BUFFER_SIZE 1024
+
 #include <cstdio>
 #include <cstdint>
 
@@ -38,17 +40,23 @@ class NetworkMessage {
 
     public:
         /**
-         * @brief Constructs a NetworkMessage from header and message.
+         * @brief Constructs an empty NetworkMessage.
+         *
+         */
+        NetworkMessage();
+         
+        /**
+         * @brief Constructs a NetworkMessage from header and payload.
          *
          * @param[in]   header      The header of this message.
-         * @param[in]   message     The message.
+         * @param[in]   payload     The payload.
          */
-        NetworkMessage(uint8_t header, FILE* message);
+        NetworkMessage(uint8_t header, FILE *payload);
 
         /**
          * @brief Destructor.
          *
-         * This destructor *will* perform a `close()` on `message`.
+         * This destructor *will* perform a `close()` on `payload`.
          */
         ~NetworkMessage();
 
@@ -60,37 +68,45 @@ class NetworkMessage {
         uint8_t get_header() const;
 
         /**
-         * @brief Calculates the payload size of this message.
+         * @brief Calculates the message size.
          *
-         * @return The payload size (include 1 byte header + 4 bytes of message
+         * @return The message size (include 1 byte header + 4 bytes of payload
          *         size, as `uint32_t`.
          */
-        uint32_t get_payload_size() const;
+        uint32_t get_message_size() const;
 
         /**
-         * @brief Retrieves the message.
+         * @brief Gets the payload.
          *
-         * @return File descriptor to the message.
+         * @return File descriptor to the payload.
          */
-        FILE* get_message() const;
+        FILE* get_payload();
 
         /**
-         * @brief Retrieves the full payload.
+         * @brief Sends the network message.
          *
-         * Full payload includes a header of 1 byte, a message size of 4 bytes
-         * followed by the message.
-         *
-         * @return A file descriptor to a temporary file that contains the full
-         *         message.
+         * @param[in]   sd      The socket descriptor which will be used to
+         *                      send the message.
          */
-        FILE* get_payload() const;
+        bool send(int sd);
+
+        /**
+         * @brief Receives a network message.
+         *
+         * This function will block execution on running thread until a full,
+         * properly formatted message is received.
+         *
+         * @param[in]   sd      The socket descriptor from which the message
+         *                      will be read.
+         */
+        bool recv(int sd);
 
     public:
         /// The header of this message.
         uint8_t header;
 
         /// The message that this NetworkMessage carries.
-        FILE* message;
+        FILE *payload;
         
 };
 
