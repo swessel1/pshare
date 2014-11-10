@@ -47,7 +47,7 @@ TcpListener::TcpListener(BlockingQueue<Event> &event_queue,
 
 TcpListener::~TcpListener() {
 
-    close(sd);
+    ::close(sd);
 }
 
 bool TcpListener::start() {
@@ -63,7 +63,7 @@ bool TcpListener::start() {
 
 void TcpListener::stop() {
 
-    close(sd);
+    ::close(sd);
 }
 
 void TcpListener::listen() {

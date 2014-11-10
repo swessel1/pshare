@@ -20,9 +20,14 @@
  * pshare. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#ifndef NODE_H
+#define NODE_H
+
 #include <netinet/in.h>
 #include "EventRegistrar.h"
 #include "NetworkMessage.h"
+
+#define BUFFER_SIZE 1024
 
 /**
  * @class   Node
@@ -153,3 +158,5 @@ class Node : public EventRegistrar {
         /// Address structure of the node.
         struct sockaddr_in addr;
 };
+
+#endif

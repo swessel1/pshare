@@ -1,6 +1,6 @@
 /*******************************************************************************
- * File        : TcpListenerEvent.h
- * Description : An event associated with TcpListener.
+ * File        : NodeEvent.h
+ * Description : Node-related events.
  * Author(s)   : Tekin Ozbek <tekin@tekinozbek.net>
  *
  * Copyright (c) 2014 Tekin Ozbek, Ryan Lynar
@@ -23,59 +23,59 @@
 #include "Event.h"
 
 /**
- * @brief   An event associated with TcpListener.
+ * @class   NodeEvent
  *
- * @details This event is registered by an instance of the TcpListener class.
- *          Details of the event can be found in the flag.
+ * @brief   Node-related events.
+ *
+ * A node will always fire events of type NodeEvent. These events can contain
+ * simple flags or messages received by the node.
  */
-class TcpListenerEvent : public Event {
+class NodeEvent : public Event {
 
     public:
         /**
          * @brief Flags that indicate the nature of the event.
          */
         enum Flags {
-            LISTEN_FAIL,
-            NEW_CONNECTION
+            MSG_RECEIVED,
+            NODE_DISCONNECT
         };
 
         /**
          * @brief Constructor.
          *
-         * @param[in]   orig    The registrar (originator) of this event.
-         * @param[in]   data    Pointer to the data carried by this event.
-         * @param[in]   flag    Nature of this event.
+         * @param[in]   orig    The originator of this event.
+         * @param[in]   data    The data that is carried by the event.
+         * @param[in]   flag    The flag that indicates the nature of this
+         *                      event.
          */
-        TcpListenerEvent(EventRegistrar &orig,
-                         void *data,
-                         TcpListenerEvent::Flags flag);
+        NodeEvent(EventRegistrar &orig, void *data, NodeEvent::Flags flag);
 
         /**
          * @brief Gets the flag for this event.
          *
-         * @return The flag that indicates the nature of this event.
+         * @return A flag of type `enum Flags`.
          */
-        TcpListenerEvent::Flags get_flag() const;
+        NodeEvent::Flags get_flag() const;
 
         /**
          * @brief Gets the data carried by this event.
          *
-         * @return Returns the data carried by the event, cast to `T`.
+         * @return Returns the data cast to type `T`.
          */
         template <typename T>
         T* get_data();
 
     private:
-        /// The data this event carries.
-        void *data;
-        
-        /// The flag of this event.
-        TcpListenerEvent::Flags flag;
+        /// The flag that indicates the nature of this event.
+        NodeEvent::Flags flag;
 
+        /// The data that is carried by this event.
+        void *data;
 };
 
 template <typename T>
-T* TcpListenerEvent::get_data() {
+T* NodeEvent::get_data() {
 
     return (T*)data;
 }

@@ -20,6 +20,9 @@
  * pshare. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#ifndef NETWORKSTRUCTURE_H
+#define NETWORKSTRUCTURE_H
+
 #include <forward_list>
 #include <vector>
 #include <mutex>
@@ -152,5 +155,7 @@ class NetworkStructure : public EventRegistrar {
 
         /// The TcpListener that was initiated (or not) by this network.
         TcpListener *tcp_listener;
-        
+
 };
+
+#endif

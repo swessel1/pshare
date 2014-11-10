@@ -6,7 +6,8 @@ OBJ = TcpListener.o \
 	  Event.o \
 	  EventRegistrar.o \
 	  Node.o \
-	  NetworkStructure.o
+	  NetworkStructure.o \
+	  NodeEvent.o
 
 pshare: $(OBJ)
 	$(COMPILER) $(CFLAGS) -o $@ $^ main.cpp -pthread

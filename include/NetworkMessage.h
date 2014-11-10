@@ -1,6 +1,6 @@
 /*******************************************************************************
  * File        : NetworkMessage.h
- * Description : Class that manages and serializes network messages.
+ * Description : Class that serializes network messages.
  * Author(s)   : Tekin Ozbek <tekin@tekinozbek.net>
  *
  * Copyright (c) 2014 Tekin Ozbek, Ryan Lynar
@@ -20,9 +20,20 @@
  * pshare. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#ifndef NETWORKMESSAGE_H
+#define NETWORKMESSAGE_H
+
 #include <cstdio>
 #include <cstdint>
 
+/**
+ * @class   NetworkMessage
+ *
+ * @brief   Class that manages and serializes network messages.
+ *
+ * @details This class handles network message-related operations. It can
+ *          serialize messages into payloads.
+ */
 class NetworkMessage {
 
     public:
@@ -33,19 +44,6 @@ class NetworkMessage {
          * @param[in]   message     The message.
          */
         NetworkMessage(uint8_t header, FILE* message);
-
-        /**
-         * @brief Constructs a NetworkMessage from a payload.
-         *
-         * Deserializes and splits the payload into header and message.
-         *
-         * @param[in]   payload     The payload as received from the network.
-         *                          **DO NOT CLOSE THIS FILE DESCRIPTOR** as it
-         *                          will be truncated to expose the message.
-         *                          The file descriptor will be closed by the
-         *                          destructor of this class.
-         */
-        NetworkMessage(FILE* payload);
 
         /**
          * @brief Destructor.
@@ -95,3 +93,5 @@ class NetworkMessage {
         FILE* message;
         
 };
+
+#endif
