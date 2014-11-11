@@ -123,6 +123,13 @@ class NetworkStructure : public EventRegistrar {
          */
         BlockingQueue<Event>& get_network_queue();
 
+        /**
+         * @brief Sets the port for the TCP listener.
+         *
+         * @param[in]   port    The port for the TCP listener.
+         */
+        void set_tcp_port(unsigned short port);
+
     private:
         /**
          * @brief Handles event queue for the network.
@@ -163,6 +170,12 @@ class NetworkStructure : public EventRegistrar {
 
         /// The port that the TcpListener will bind to.
         unsigned short tcp_port = 26005;
+
+        /// The number of current child connections.
+        unsigned short num_conn = 0;
+
+        /// Maximum number of child connections.
+        unsigned short max_num_conn = 10;
 
 };
 

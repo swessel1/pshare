@@ -47,20 +47,34 @@ BlockingQueue<Event>& NetworkStructure::get_network_queue() {
     return network_queue;
 }
 
+void NetworkStructure::set_tcp_port(unsigned short port) {
+
+    this->tcp_port = port;
+}
+
 bool NetworkStructure::start() {
 
     /* if there are any parent nodes, connect to it */
     if (ancestry.size() > 0) {
-        
-        if (!ancestry[0]->open()) {
-            std::cout <<
-                "[FATAL] failed to connect to parent node"
-            << std::endl;
-            return false;
-        } else {
+
+        /* if connected, send handshake request and start listening */
+        if (ancestry[0]->open()) {
+            
+            // TODO: send handshake request
+
             /* start listening for incoming messages on separate thread */
             std::thread t(&Node::listen, ancestry[0]);
             t.detach();
+        }
+
+        /* if failed, return false */
+        else {
+
+            std::cout <<
+                "[FATAL] failed to connect to parent node"
+            << std::endl;
+            
+            return false;
         }
     }
 
@@ -77,10 +91,14 @@ bool NetworkStructure::start() {
 
             return false;
         }
+
+        std::cout <<
+            "[INFO] Listening for nodes on port " << tcp_port
+        << std::endl;
     }
 
-    std::thread network_control_thread(&NetworkStructure::control, this);
-    network_control_thread.detach();
+    std::thread control_thread(&NetworkStructure::control, this);
+    control_thread.detach();
 
     return true;
 }
@@ -89,7 +107,25 @@ void NetworkStructure::control() {
 
     while (true) {
 
+        /* this will block the thread if there are no new events to process */
         Event &e = network_queue.front();
+
+        /* After accepting a new connection, start listening for incoming
+         * messages on a separate thread. */
+        if (e.get_flag() == Event::TCP_INC_CONNECTION) {
+
+            Node *node = static_cast<Node *>(e.get_data());
+
+            std::cout <<
+                "[INFO] Node at " << node->get_ineta() <<
+                " connected"
+            << std::endl;
+
+            std::thread t(&Node::listen, node);
+            t.detach();
+
+            num_conn++;
+        }
 
         network_queue.pop();
     }

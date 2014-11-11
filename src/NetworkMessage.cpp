@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 #include <unistd.h>
+#include <iostream>
 #include "NetworkMessage.h"
 
 NetworkMessage::NetworkMessage() { }
@@ -49,7 +50,7 @@ FILE* NetworkMessage::get_payload() {
     return payload;
 }
 
-uint32_t NetworkMessage::get_message_size() const {
+uint32_t NetworkMessage::get_payload_size() const {
 
     uint32_t payload_size = 0;
 
@@ -61,12 +62,12 @@ uint32_t NetworkMessage::get_message_size() const {
     }
     
     /* header (1) + payload_size (4) + size of payload (?) */
-    return 5 + payload_size;
+    return payload_size;
 }
 
 bool NetworkMessage::send(int sd) {
 
-    uint32_t payload_left = get_message_size();
+    uint32_t payload_left = get_payload_size();
     uint32_t msg_size     = htonl(payload_left);
 
     if (::send(sd, &header, sizeof(uint8_t), 0) < 0)
@@ -96,7 +97,7 @@ bool NetworkMessage::send(int sd) {
 }
 
 bool NetworkMessage::recv(int sd) {
-
+    
     int recv_len;
     uint32_t payload_size;
     char buffer[BUFFER_SIZE];
@@ -104,13 +105,13 @@ bool NetworkMessage::recv(int sd) {
     /* receive header */
     if (::recv(sd, &header, sizeof(uint8_t), 0) <= 0)
         return false;
-
+    std::cout << "got header" << std::endl;
     /* receive message size */
     if (::recv(sd, &payload_size, sizeof(uint32_t), 0) <= 0)
         return false;
 
     payload_size = ntohl(payload_size);
-
+    std::cout << "got msg size: " << payload_size << std::endl;
     if (payload_size > 0) {
 
         payload = tmpfile();

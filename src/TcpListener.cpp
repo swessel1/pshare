@@ -77,7 +77,7 @@ void TcpListener::listen() {
         
         /* create a new node */
         Node *node = new Node(sock_recv, addr_recv, event_queue);
-        Event event(*this, node, Event::TCP_NEW_NODE);
+        Event event(*this, node, Event::TCP_INC_CONNECTION);
 
         register_event(event);
     }

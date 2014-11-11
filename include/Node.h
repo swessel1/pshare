@@ -23,6 +23,7 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include <string>
 #include <netinet/in.h>
 #include "EventRegistrar.h"
 #include "NetworkMessage.h"
@@ -142,6 +143,22 @@ class Node : public EventRegistrar {
          * @return The sibling number of the node as `unsigned short`.
          */
         unsigned short get_sibling_number() const;
+
+        /**
+         * @brief Gets the address structure of this node.
+         *
+         * @return Reference to the address structure of this node of type
+         *         `struct sockaddr_in`.
+         */
+        struct sockaddr_in& get_addr();
+
+        /**
+         * @brief Gets the internet address of the node.
+         *
+         * @return A human-readable representation of this node's internet
+         *         address as `std::string`.
+         */
+        std::string get_ineta() const;
 
     private:
         /// The generation of the node, essentially the distance from root node.

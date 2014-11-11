@@ -44,7 +44,7 @@ class Event {
         enum Flags {
             NODE_DISCONNECT,
             NODE_MSG_RECEIVED,
-            TCP_NEW_NODE,
+            TCP_INC_CONNECTION,
             TCP_LISTEN_FAIL
         };
         

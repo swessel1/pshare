@@ -68,12 +68,11 @@ class NetworkMessage {
         uint8_t get_header() const;
 
         /**
-         * @brief Calculates the message size.
+         * @brief Calculates the payload size.
          *
-         * @return The message size (include 1 byte header + 4 bytes of payload
-         *         size, as `uint32_t`.
+         * @return The payload size as `uint32_t`.
          */
-        uint32_t get_message_size() const;
+        uint32_t get_payload_size() const;
 
         /**
          * @brief Gets the payload.

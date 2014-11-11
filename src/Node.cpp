@@ -23,6 +23,7 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <cstdint>
 #include <cstdio>
 #include <thread>
@@ -86,4 +87,14 @@ void Node::listen() {
 bool Node::send(NetworkMessage &msg) {
 
     return msg.send(sd);
+}
+
+struct sockaddr_in& Node::get_addr() {
+
+    return addr;
+}
+
+std::string Node::get_ineta() const {
+
+    return inet_ntoa(addr.sin_addr);
 }
