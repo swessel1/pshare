@@ -22,15 +22,16 @@
 
 #include <iostream>
 #include <thread>
+#include "out.h"
 #include "NetworkStructure.h"
 
 NetworkStructure::NetworkStructure(BlockingQueue<Event> &queue) :
-    EventRegistrar(queue), terminator(false) { }
+    EventRegistrar(queue), terminal(false) { }
 
 NetworkStructure::NetworkStructure(struct sockaddr_in parent_addr,
                                    bool term,
                                    BlockingQueue<Event> &queue) :
-    EventRegistrar(queue), terminator(term) {
+    EventRegistrar(queue), terminal(term) {
 
     /* create node and push into ancestry */
     Node *node = new Node(0, parent_addr, network_queue);
@@ -52,6 +53,11 @@ void NetworkStructure::set_tcp_port(unsigned short port) {
     this->tcp_port = port;
 }
 
+void NetworkStructure::set_max_conn(unsigned short max) {
+
+    this->max_conn = max;
+}
+
 bool NetworkStructure::start() {
 
     /* if there are any parent nodes, connect to it */
@@ -62,6 +68,8 @@ bool NetworkStructure::start() {
             
             // TODO: send handshake request
 
+            // TODO: receive handshake response
+
             /* start listening for incoming messages on separate thread */
             std::thread t(&Node::listen, ancestry[0]);
             t.detach();
@@ -70,31 +78,23 @@ bool NetworkStructure::start() {
         /* if failed, return false */
         else {
 
-            std::cout <<
-                "[FATAL] failed to connect to parent node"
-            << std::endl;
-            
+            out(4) << "failed to connect to parent node" << std::endl;
             return false;
         }
     }
 
     /* start tcp listener if not terminator node */
-    if (!terminator) {
+    if (!terminal) {
         
         tcp_listener = new TcpListener(network_queue, tcp_port);
 
         if (!tcp_listener->start()) {
 
-            std::cout <<
-                "[FATAL] Unable to bind to port " << tcp_port
-            << std::endl;
-
+            out(4) << "unable to bind port " << tcp_port << std::endl;
             return false;
         }
 
-        std::cout <<
-            "[INFO] Listening for nodes on port " << tcp_port
-        << std::endl;
+        out() << "listening for nodes on port " << tcp_port << std::endl;
     }
 
     std::thread control_thread(&NetworkStructure::control, this);
@@ -110,15 +110,13 @@ void NetworkStructure::control() {
         /* this will block the thread if there are no new events to process */
         Event &e = network_queue.front();
 
-        /* After accepting a new connection, start listening for incoming
-         * messages on a separate thread. */
+        /* after accepting a new connection, start listening for incoming
+         * messages on a separate thread */
         if (e.get_flag() == Event::TCP_INC_CONNECTION) {
 
             Node *node = static_cast<Node *>(e.get_data());
 
-            std::cout <<
-                "[INFO] Node at " << node->get_ineta() <<
-                " connected"
+            out() << "node at " << node->get_ineta() << " connected"
             << std::endl;
 
             std::thread t(&Node::listen, node);
@@ -127,6 +125,25 @@ void NetworkStructure::control() {
             num_conn++;
         }
 
+        /* a node disconnected */
+        else if (e.get_flag() == Event::NODE_DISCONNECT) {
+
+            Node *node = static_cast<Node *>(e.get_data());
+
+            out() << "node at " << node->get_ineta() << " disconnected"
+            << std::endl;
+        }
+
         network_queue.pop();
     }
+}
+
+void NetworkStructure::set_key(std::string key) {
+
+    this->key = key;
+}
+
+void NetworkStructure::set_dir(std::string dir) {
+
+    this->dir = dir;
 }

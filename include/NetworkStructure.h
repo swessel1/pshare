@@ -57,9 +57,9 @@ class NetworkStructure : public EventRegistrar {
          *
          * @param[in]   parent_addr     Parent node address.
          * @param[in]   term            Indicates whether this node is a
-         *                              terminator or not. A terminator node is
+         *                              terminal or not. A terminal node is
          *                              one that does not accept and child nodes
-         *                              (i.e. receive only). Terminator nodes
+         *                              (i.e. receive only). Terminal nodes
          *                              are not considered as candidates during
          *                              parent change.
          * @param[in]   queue           The event queue for this registrar.
@@ -130,6 +130,28 @@ class NetworkStructure : public EventRegistrar {
          */
         void set_tcp_port(unsigned short port);
 
+        /**
+         * @brief Sets maximum number of connections accepted by this node.
+         *
+         * @param[in]   max     Maximum number of connections.
+         */
+        void set_max_conn(unsigned short max);
+
+        /**
+         * @brief Sets the key required for the network.
+         *
+         * @param[in]   key     The key that is required to connect to the
+         *                      network. The key is set by the root node.
+         */
+        void set_key(std::string key);
+
+        /**
+         * @brief Sets the directory to share.
+         *
+         * @param[in]   dir     The directory the node is sharing.
+         */
+        void set_dir(std::string dir);
+
     private:
         /**
          * @brief Handles event queue for the network.
@@ -154,7 +176,7 @@ class NetworkStructure : public EventRegistrar {
         std::mutex thread_safety;
         
         /// Indicates whether current node is a terminator or not.
-        bool terminator;
+        bool terminal;
 
         /// An array of ancestors. 0th index is always parent.
         std::vector<Node *> ancestry;
@@ -174,8 +196,14 @@ class NetworkStructure : public EventRegistrar {
         /// The number of current child connections.
         unsigned short num_conn = 0;
 
-        /// Maximum number of child connections.
-        unsigned short max_num_conn = 10;
+        /// Maximum number of connections.
+        unsigned short max_conn = 10;
+
+        /// The directory we're sharing.
+        std::string dir;
+
+        /// The key that is used to communicate between nodes.
+        std::string key;
 
 };
 
