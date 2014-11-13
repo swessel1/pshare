@@ -174,6 +174,14 @@ class Node : public EventRegistrar {
          */
         int get_sd() const;
 
+        unsigned short get_tcp_port() const;
+
+        bool is_terminal() const;
+
+        void set_terminal(bool terminality);
+
+        void set_tcp_port(unsigned short port);
+
     private:
         /// The generation of the node, essentially the distance from root node.
         unsigned short generation;
@@ -186,6 +194,12 @@ class Node : public EventRegistrar {
 
         /// Address structure of the node.
         struct sockaddr_in addr;
+
+        /// Indicates terminality of the node.
+        bool terminal;
+
+        /// If this is not a terminal node, the TCP port is listens to.
+        unsigned short tcp_port;
 };
 
 #endif

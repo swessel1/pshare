@@ -62,65 +62,127 @@ void NetworkStructure::set_max_conn(unsigned short max) {
     this->max_conn = max;
 }
 
+bool NetworkStructure::handshake() {
+
+    /* if connected, send handshake request and start listening */
+    if (ancestry[0]->open()) {
+        
+        /* ------------------ send handshake request ------------------- */
+        out() << "sending handshake request to parent: "
+        << ancestry[0]->get_ineta() << std::endl;
+
+        FILE *f  = tmpfile();
+        
+        NetworkMessage *msg = new NetworkMessage(PSHARE_CONN_REQ, f);
+
+        /* send terminality */
+        msg->write((uint8_t)(terminal ? 1 : 0));
+        msg->write((uint16_t)tcp_port);
+        msg->write((uint32_t)key.length());
+        fwrite(&key[0], sizeof(char), key.length(), f);
+        
+        bool result = msg->send(ancestry[0]->get_sd());
+        delete msg;
+        
+        if (!result) {
+
+            out(4) << "unable to send handshake request" << std::endl;
+            return false;
+        }
+
+        /* ------------ receive handshake response --------------------- */
+        msg = new NetworkMessage();
+        result = msg->recv(ancestry[0]->get_sd());
+
+        if (!result) {
+
+            out(4) << "lost connection to parent without handshake response"
+            << std::endl;
+
+            delete msg;
+            return false;
+        }
+
+        /* if we sent a bad key */
+        if (msg->get_header() == PSHARE_CONN_BAD) {
+
+            out(4) << "parent refused connection: bad key" << std::endl;
+            return false;
+        }
+
+        /* good key, received reply */
+        else if (msg->get_header() == PSHARE_CONN_REP) {
+
+            uint16_t ancestry_size = msg->read_uint16();
+            uint16_t sibling_size  = msg->read_uint16();
+            out() << "received " << ancestry_size << " ancestors and "
+            << sibling_size << " siblings from parents" << std::endl;
+
+            /* set parent generation, our generation is parent + 1 */
+            uint16_t parent_generation = msg->read_uint16();
+            ancestry[0]->set_generation(parent_generation);
+            generation     = parent_generation + 1;
+            sibling_number = msg->read_uint16();
+
+            /* read ancestry and insert into vector */
+            for (uint16_t i = 0; i < ancestry_size; i++) {
+
+                struct sockaddr_in addr;
+                addr.sin_family = AF_INET;
+                addr.sin_addr   = {msg->read_uint32()};
+                addr.sin_port   = htons(msg->read_uint16());
+                
+                Node *node = new Node(0, addr, network_queue);
+                ancestry.push_back(node);
+            }
+
+            /* read siblings and insert into the list */
+            for (uint16_t i = 0; i < sibling_size; i++) {
+
+                struct sockaddr_in addr;
+                addr.sin_family = AF_INET;
+                addr.sin_addr   = {msg->read_uint32()};
+                addr.sin_port   = htons(msg->read_uint16());
+
+                Node *node = new Node(0, addr, network_queue);
+                node->set_sibling_number(msg->read_uint16());
+                siblings.push_back(node);
+                out() << "sibling port " << ntohs(addr.sin_port) << std::endl;
+            }
+        }
+
+        /* parent not paying attention, unexpected header */
+        else {
+
+            out(4) << "parent sent unexpected message" << std::endl;
+            return false;
+        }
+
+        out(0) << "received local topology from parent" << std::endl;
+
+        delete msg;
+
+        /* start listening for incoming messages on separate thread */
+        std::thread t(&Node::listen, ancestry[0]);
+        t.detach();
+    }
+
+    /* if failed, return false */
+    else {
+
+        out(4) << "failed to connect to parent node" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 bool NetworkStructure::start() {
 
     /* if there are any parent nodes, connect to it */
-    if (ancestry.size() > 0) {
-
-        /* if connected, send handshake request and start listening */
-        if (ancestry[0]->open()) {
-            
-            /* ------------------ send handshake request ------------------- */
-            out() << "sending handshake request to parent: "
-            << ancestry[0]->get_ineta() << std::endl;
-            
-            FILE *f         = tmpfile();
-            uint32_t keylen = htonl(key.length());
-            out() << "key is: " << key << std::endl;
-            out() << "wrote: " << fwrite(&keylen, sizeof(uint32_t), 1, f) << std::endl;
-            out() << "wrote: " << fwrite(&key[0], sizeof(char), key.length(), f) << std::endl;
-            
-            NetworkMessage *msg = new NetworkMessage(PSHARE_CONN_REQ, f);
-            bool result = msg->send(ancestry[0]->get_sd());
-            delete msg;
-            
-            if (!result) {
-
-                out(4) << "unable to send handshake request" << std::endl;
-                return false;
-            }
-
-            /* ------------ receive handshake response --------------------- */
-            msg = new NetworkMessage();
-            result = msg->recv(ancestry[0]->get_sd());
-
-            if (!result) {
-
-                out(4) << "lost connection to parent without handshake response"
-                << std::endl;
-
-                delete msg;
-                return false;
-            }
-
-            out(0) << "received local topology from parent" << std::endl;
-
-            // TODO: process handshake response
-
-            delete msg;
-
-            /* start listening for incoming messages on separate thread */
-            std::thread t(&Node::listen, ancestry[0]);
-            t.detach();
-        }
-
-        /* if failed, return false */
-        else {
-
-            out(4) << "failed to connect to parent node" << std::endl;
+    if (ancestry.size() > 0)
+        if (!handshake())
             return false;
-        }
-    }
 
     /* start tcp listener if not terminator node */
     if (!terminal) {
@@ -169,29 +231,98 @@ void NetworkStructure::control() {
 
             Node *node = static_cast<Node *>(e.get_data());
 
+            /* if this is the parent node, commence a parent change. */
+            /*if (node == ancestry[0]) {
+
+                // TODO: parent change:
+            }*/
+
+            /* if this is child, remove from list */
+            /*else {
+                //children.remove(node);
+            }*/
+
             out() << "node at " << node->get_ineta() << " disconnected"
             << std::endl;
+
+            delete node;
         }
 
         else if (e.get_flag() == Event::NODE_MSG_RECEIVED) {
 
             /* get sender and message */
-            Node &sender = static_cast<Node &>(e.get_registrar());
+            Node *sender = static_cast<Node *>(&e.get_registrar());
             NetworkMessage *msg = static_cast<NetworkMessage *>(e.get_data());
 
             if (msg->get_header() == PSHARE_CONN_REQ) {
 
+                /* get terminality and tcp listening port */
+                sender->set_terminal(msg->read_uint8() ? true : false);
+                sender->set_tcp_port(msg->read_uint16());
+                
                 /* get the key length */
-                uint32_t keylen;
-                fread(&keylen, sizeof(uint32_t), 1, msg->get_payload());
-                keylen = ntohl(keylen);
-                out() << "received key length: " << keylen << std::endl;
+                uint32_t keylen = msg->read_uint32();
 
                 /* get key sent by node */
                 std::string r_key(keylen, 0);
                 fread(&r_key[0], sizeof(char), keylen, msg->get_payload());
-    
-                out() << "received connection request with key: " << r_key << std::endl;
+
+                /* if key is invalid, send a mean response and drop conn */
+                if (r_key != key) {
+
+                    NetworkMessage mean_msg(PSHARE_CONN_BAD, tmpfile());
+                    mean_msg.send(sender->get_sd());
+                    sender->close();
+
+                    out() << "received bad key from " << sender->get_ineta()
+                    << ", dropping connection" << std::endl;
+                }
+
+                /* key is valid, send network topology */
+                else {
+
+                    NetworkMessage topology_msg(PSHARE_CONN_REP, tmpfile());
+
+                    topology_msg.write((uint16_t)ancestry.size());
+                    topology_msg.write((uint16_t)children.size());
+                    topology_msg.write((uint16_t)generation);
+
+                    sender->set_sibling_number(get_next_sibling_number());
+                    topology_msg.write((uint16_t)sender->get_sibling_number());
+
+                    for (uint16_t i = 0; i < ancestry.size(); i++) {
+
+                        struct sockaddr_in addr = ancestry[i]->get_addr();
+
+                        topology_msg.write((uint32_t)addr.sin_addr.s_addr);
+                        topology_msg.write((uint16_t)ntohs(addr.sin_port));
+                    }
+
+                    std::list<Node *>::iterator i;
+                    for (i = children.begin(); i != children.end(); ++i) {
+
+                        struct sockaddr_in addr = (*i)->get_addr();
+
+                        topology_msg.write((uint32_t)addr.sin_addr.s_addr);
+                        topology_msg.write((uint16_t)((*i)->get_tcp_port()));
+                        topology_msg.write(
+                            (uint16_t)((*i)->get_sibling_number())
+                        );
+                    }
+
+                    /* if msg is sent successfully */
+                    if (topology_msg.send(sender->get_sd())) {
+
+                        /* topology was sent, report change to children and
+                         * add this node as a new child */
+                        if (!sender->is_terminal()) {
+
+                            // TODO: relay info to children.
+                        }
+
+                         children.push_back(sender);
+                    }
+                }
             }
 
             delete msg;

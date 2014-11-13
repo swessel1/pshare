@@ -180,7 +180,7 @@ int main(int argc, char **argv) {
     
     if (!network->start()) {
 
-        std::cout << "unable to establish network structure" << std::endl;
+        out(4) << "unable to establish network structure" << std::endl;
         return -2;
     }
 

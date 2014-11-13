@@ -63,8 +63,45 @@ uint32_t NetworkMessage::get_payload_size() const {
         fseek(payload, current_position, SEEK_SET);
     }
     
-    /* header (1) + payload_size (4) + size of payload (?) */
     return payload_size;
+}
+
+void NetworkMessage::write(uint32_t n) {
+
+    n = htonl(n);
+    fwrite(&n, sizeof(uint32_t), 1, payload);
+}
+
+void NetworkMessage::write(uint16_t n) {
+
+    n = htons(n);
+    fwrite(&n, sizeof(uint16_t), 1, payload);
+}
+
+void NetworkMessage::write(uint8_t n) {
+
+    fwrite(&n, sizeof(uint8_t), 1, payload);
+}
+
+uint32_t NetworkMessage::read_uint32() {
+
+    uint32_t val;
+    fread(&val, sizeof(uint32_t), 1, payload);
+    return ntohl(val);
+}
+
+uint16_t NetworkMessage::read_uint16() {
+
+    uint16_t val;
+    fread(&val, sizeof(uint16_t), 1, payload);
+    return ntohs(val);
+}
+
+uint8_t NetworkMessage::read_uint8() {
+
+    uint16_t val;
+    fread(&val, sizeof(uint8_t), 1, payload);
+    return val;
 }
 
 bool NetworkMessage::send(int sd) {

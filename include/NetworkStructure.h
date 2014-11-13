@@ -23,8 +23,9 @@
 #ifndef NETWORKSTRUCTURE_H
 #define NETWORKSTRUCTURE_H
 
-#include <forward_list>
 #include <vector>
+#include <list>
+#include <forward_list>
 #include <mutex>
 #include <netinet/in.h>
 #include "Node.h"
@@ -166,12 +167,21 @@ class NetworkStructure : public EventRegistrar {
          * This function will block execution of the thread.
          */
         void control();
+
+        /**
+         * @brief Initiates handshake with a parent.
+         *
+         * Connection to parent is opened by this function.
+         *
+         * @returns `true` if handshake was successful, `false` otherwise.
+         */
+        bool handshake();
         
         /// The event queue that is handled by the network structure.
         BlockingQueue<Event> network_queue;
     
         /// The generation identifier of this network node.
-        unsigned short generation;
+        unsigned short generation = 0;
 
         /// The sibling number of this network node.
         unsigned short sibling_number;
@@ -189,10 +199,10 @@ class NetworkStructure : public EventRegistrar {
         std::vector<Node *> ancestry;
 
         /// A list of siblings.
-        std::forward_list<Node *> siblings;
+        std::list<Node *> siblings;
 
         /// A list of children.
-        std::forward_list<Node *> children;
+        std::list<Node *> children;
 
         /// The TcpListener that was initiated (or not) by this network.
         TcpListener *tcp_listener;

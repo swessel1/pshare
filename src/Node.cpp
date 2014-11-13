@@ -108,3 +108,45 @@ int Node::get_sd() const {
 
     return sd;
 }
+
+Node& Node::set_generation(unsigned short generation) {
+
+    this->generation = generation;
+    return *this;
+}
+
+Node& Node::set_sibling_number(unsigned short sibling_number) {
+
+    this->sibling_number = sibling_number;
+    return *this;
+}
+
+unsigned short Node::get_generation() const {
+
+    return generation;
+}
+
+unsigned short Node::get_sibling_number() const {
+
+    return sibling_number;
+}
+
+unsigned short Node::get_tcp_port() const {
+
+    return tcp_port;
+}
+
+bool Node::is_terminal() const {
+
+    return terminal;
+}
+
+void Node::set_terminal(bool terminality) {
+
+    terminal = terminality;
+}
+
+void Node::set_tcp_port(unsigned short port) {
+
+    tcp_port = port;
+}

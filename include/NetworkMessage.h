@@ -100,6 +100,64 @@ class NetworkMessage {
          */
         bool recv(int sd);
 
+        /**
+         * @brief Inserts a 8-bit number to the payload.
+         *
+         * File pointer is moved forward by 1 bytes.
+         *
+         * @param[in]   n   A `uint8_t` that will be inserted into the payload.
+         */
+        void write(uint8_t n);
+
+        /**
+         * @brief Inserts a 32-bit number to the payload.
+         *
+         * The number is converted to network byte order. File pointer is moved
+         * forward by 4 bytes.
+         *
+         * @param[in]   n   A `uint32_t` that will be inserted into the payload.
+         */
+        void write(uint32_t n);
+
+        /**
+         * @brief Inserts a 16-bit number to the payload.
+         *
+         * The number is converted to network byte order. File pointer is moved
+         * forward by 2 bytes.
+         *
+         * @param[in]   n   A `uint16_t` that will be inserted into the payload.
+         */
+        void write(uint16_t n);
+
+        /**
+         * @brief Retrieves a 32-bit number from the payload.
+         *
+         * The number is converted to host byte order. File read pointer is
+         * moved forward by 4 bytes.
+         *
+         * @return A `uint32_t` converted to host byte order.
+         */
+        uint32_t read_uint32();
+
+        /**
+         * @brief Retrieves a 16-bit number from the payload.
+         *
+         * The number is converted to host byte order. File read pointer is
+         * moved forward by 2 bytes.
+         *
+         * @return A `uint16_t` converted to host byte order.
+         */
+        uint16_t read_uint16();
+
+        /**
+         * @brief Retrieves a 8-bit number from the payload.
+         *
+         * File read pointer is moved forward by 1 bytes.
+         *
+         * @return A `uint8_t` converted to host byte order.
+         */
+        uint8_t read_uint8();
+
     public:
         /// The header of this message.
         uint8_t header;
