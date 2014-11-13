@@ -152,6 +152,13 @@ class NetworkStructure : public EventRegistrar {
          */
         void set_dir(std::string dir);
 
+        /**
+         * @brief Retrieves the next available sibling number.
+         *
+         * @return The next sibling number.
+         */
+        unsigned short get_next_sibling_number();
+
     private:
         /**
          * @brief Handles event queue for the network.
@@ -170,7 +177,7 @@ class NetworkStructure : public EventRegistrar {
         unsigned short sibling_number;
 
         /// Keeps track of sibling numbers that were 
-        static unsigned short next_sibling_number;
+        unsigned short next_sibling_number = 1;
 
         /// Locks the instance for thread safety.
         std::mutex thread_safety;

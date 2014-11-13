@@ -20,6 +20,11 @@
  * pshare. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#ifndef NETWORKMESSAGEHEADERS_H
+#define NETWORKMESSAGEHEADERS_H
+
 #define PSHARE_CONN_REQ     0x01
 #define PSHARE_CONN_REP     0x02
 #define PSHARE_CONN_BAD     0x03
+
+#endif

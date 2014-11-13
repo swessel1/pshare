@@ -84,6 +84,11 @@ void Node::listen() {
     ::close(sd);
 }
 
+Node::~Node() {
+
+    this->close();
+}
+
 bool Node::send(NetworkMessage &msg) {
 
     return msg.send(sd);
@@ -97,4 +102,9 @@ struct sockaddr_in& Node::get_addr() {
 std::string Node::get_ineta() const {
 
     return inet_ntoa(addr.sin_addr);
+}
+
+int Node::get_sd() const {
+
+    return sd;
 }

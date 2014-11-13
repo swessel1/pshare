@@ -22,7 +22,11 @@
 
 #include <iostream>
 #include <thread>
+#include <cstdio>
+#include <string>
+#include <netinet/in.h>
 #include "out.h"
+#include "NetworkMessageHeaders.h"
 #include "NetworkStructure.h"
 
 NetworkStructure::NetworkStructure(BlockingQueue<Event> &queue) :
@@ -66,9 +70,44 @@ bool NetworkStructure::start() {
         /* if connected, send handshake request and start listening */
         if (ancestry[0]->open()) {
             
-            // TODO: send handshake request
+            /* ------------------ send handshake request ------------------- */
+            out() << "sending handshake request to parent: "
+            << ancestry[0]->get_ineta() << std::endl;
+            
+            FILE *f         = tmpfile();
+            uint32_t keylen = htonl(key.length());
+            out() << "key is: " << key << std::endl;
+            out() << "wrote: " << fwrite(&keylen, sizeof(uint32_t), 1, f) << std::endl;
+            out() << "wrote: " << fwrite(&key[0], sizeof(char), key.length(), f) << std::endl;
+            
+            NetworkMessage *msg = new NetworkMessage(PSHARE_CONN_REQ, f);
+            bool result = msg->send(ancestry[0]->get_sd());
+            delete msg;
+            
+            if (!result) {
 
-            // TODO: receive handshake response
+                out(4) << "unable to send handshake request" << std::endl;
+                return false;
+            }
+
+            /* ------------ receive handshake response --------------------- */
+            msg = new NetworkMessage();
+            result = msg->recv(ancestry[0]->get_sd());
+
+            if (!result) {
+
+                out(4) << "lost connection to parent without handshake response"
+                << std::endl;
+
+                delete msg;
+                return false;
+            }
+
+            out(0) << "received local topology from parent" << std::endl;
+
+            // TODO: process handshake response
+
+            delete msg;
 
             /* start listening for incoming messages on separate thread */
             std::thread t(&Node::listen, ancestry[0]);
@@ -134,6 +173,30 @@ void NetworkStructure::control() {
             << std::endl;
         }
 
+        else if (e.get_flag() == Event::NODE_MSG_RECEIVED) {
+
+            /* get sender and message */
+            Node &sender = static_cast<Node &>(e.get_registrar());
+            NetworkMessage *msg = static_cast<NetworkMessage *>(e.get_data());
+
+            if (msg->get_header() == PSHARE_CONN_REQ) {
+
+                /* get the key length */
+                uint32_t keylen;
+                fread(&keylen, sizeof(uint32_t), 1, msg->get_payload());
+                keylen = ntohl(keylen);
+                out() << "received key length: " << keylen << std::endl;
+
+                /* get key sent by node */
+                std::string r_key(keylen, 0);
+                fread(&r_key[0], sizeof(char), keylen, msg->get_payload());
+    
+                out() << "received connection request with key: " << r_key << std::endl;
+            }
+
+            delete msg;
+        }
+
         network_queue.pop();
     }
 }
@@ -146,4 +209,12 @@ void NetworkStructure::set_key(std::string key) {
 void NetworkStructure::set_dir(std::string dir) {
 
     this->dir = dir;
+}
+
+unsigned short NetworkStructure::get_next_sibling_number() {
+
+    if (next_sibling_number == 65535)
+        next_sibling_number = 1;
+
+    return next_sibling_number++;
 }

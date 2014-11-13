@@ -78,6 +78,13 @@ class Node : public EventRegistrar {
              BlockingQueue<Event> &queue);
 
         /**
+         * @brief Destructor.
+         *
+         * Cleans up and closes the socket on the node.
+         */
+        ~Node();
+
+        /**
          * @brief Opens a connection to the node.
          *
          * @return Returns `true` if connection is opened successfully, `false`
@@ -159,6 +166,13 @@ class Node : public EventRegistrar {
          *         address as `std::string`.
          */
         std::string get_ineta() const;
+
+        /**
+         * @brief Gets the socket descriptor of the node.
+         *
+         * @return Socket descriptor as `int`.
+         */
+        int get_sd() const;
 
     private:
         /// The generation of the node, essentially the distance from root node.

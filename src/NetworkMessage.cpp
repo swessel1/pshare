@@ -29,7 +29,8 @@
 #include <iostream>
 #include "NetworkMessage.h"
 
-NetworkMessage::NetworkMessage() { }
+NetworkMessage::NetworkMessage() :
+    header(0), payload(0) { }
 
 NetworkMessage::NetworkMessage(uint8_t header, FILE *payload) :
     header(header), payload(payload) { }
@@ -57,7 +58,8 @@ uint32_t NetworkMessage::get_payload_size() const {
     if (payload != NULL) {
         
         long int current_position = ftell(payload);
-        payload_size = fseek(payload, 0, SEEK_END);
+        fseek(payload, 0, SEEK_END);
+        payload_size = ftell(payload);
         fseek(payload, current_position, SEEK_SET);
     }
     
@@ -66,6 +68,8 @@ uint32_t NetworkMessage::get_payload_size() const {
 }
 
 bool NetworkMessage::send(int sd) {
+
+    fseek(payload, 0, SEEK_SET);
 
     uint32_t payload_left = get_payload_size();
     uint32_t msg_size     = htonl(payload_left);
@@ -77,7 +81,7 @@ bool NetworkMessage::send(int sd) {
         return false;
 
     if (payload != NULL) {
-
+        
         off_t offset = 0;
         int send_len = 0;
         int fd       = fileno(payload);
@@ -105,17 +109,17 @@ bool NetworkMessage::recv(int sd) {
     /* receive header */
     if (::recv(sd, &header, sizeof(uint8_t), 0) <= 0)
         return false;
-    std::cout << "got header" << std::endl;
+    
     /* receive message size */
     if (::recv(sd, &payload_size, sizeof(uint32_t), 0) <= 0)
         return false;
 
     payload_size = ntohl(payload_size);
-    std::cout << "got msg size: " << payload_size << std::endl;
+    
     if (payload_size > 0) {
 
         payload = tmpfile();
-
+        
         while (payload_size > 0) {
 
             recv_len = ::recv(sd, buffer, BUFFER_SIZE, 0);
@@ -132,6 +136,8 @@ bool NetworkMessage::recv(int sd) {
 
             payload_size -= recv_len;
         }
+
+        fseek(payload, 0, SEEK_SET);
     }
 
     return true;

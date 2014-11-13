@@ -20,6 +20,9 @@
  * pshare. If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#ifndef OUT_H
+#define OUT_H
+
 #include <iostream>
 
 /// Indicates verbose mode.
@@ -35,3 +38,5 @@ extern bool verbose;
  *         returns a reference to a null stream.
  */
 std::ostream& out(unsigned char level = 0);
+
+#endif

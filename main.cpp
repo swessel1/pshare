@@ -19,10 +19,9 @@ int main(int argc, char **argv) {
             "+++ usage: " << argv[0] << " [options] <mode> <args...>"
         << std::endl;
 
-        exit(-1);
+        return -1;
     }
 
-    std::string key, dir;
     bool terminal = false;
     int  tcp_port = 26005;
     int  max_conn = 10;
@@ -66,7 +65,7 @@ int main(int argc, char **argv) {
                     std::cout <<
                         "+++ invalid port: " << optarg << " +++"
                     << std::endl;
-                    exit(-1);
+                    return -1;
                 }
                 break;
 
@@ -79,7 +78,7 @@ int main(int argc, char **argv) {
                     std::cout <<
                         "+++ max connections must be between 0 and 65535 +++"
                     << std::endl;
-                    exit(-1);
+                    return -1;
                 }
                 if (max_conn == 0)
                     terminal = true;
@@ -114,13 +113,12 @@ int main(int argc, char **argv) {
                     "+++ missing args: host <dir> <key> +++"
                 << std::endl;
 
-                exit(-1);
+                return -1;
             }
 
-            dir = argv[optind + 1];
-            key = argv[optind + 2];
-
             network = new NetworkStructure(event_queue);
+            network->set_key(argv[optind + 2]);
+            network->set_dir(argv[optind + 1]);
         }
 
         /* node connecting to a parent. min. 3 args: ip, port, key */
@@ -132,10 +130,8 @@ int main(int argc, char **argv) {
                     "+++ missing args: connect <ip|hostname> <port> <key> +++"
                 << std::endl;
 
-                exit(-1);
+                return -1;
             }
-
-            key = argv[optind + 3];
 
             /* validate port */
             int port = atoi(argv[optind + 2]);
@@ -145,7 +141,7 @@ int main(int argc, char **argv) {
                     "+++ invalid arg: port must be between 0 and 65535 +++"
                 << std::endl;
 
-                exit(-1);
+                return -1;
             }
 
             /* validate ip address or hostname */
@@ -156,7 +152,7 @@ int main(int argc, char **argv) {
                     "+++ invalid ip or hostname +++"
                 << std::endl;
 
-                exit(-1);
+                return -1;
             }
 
             struct sockaddr_in addr;
@@ -165,13 +161,14 @@ int main(int argc, char **argv) {
             addr.sin_addr   = ((struct sockaddr_in *)a_info->ai_addr)->sin_addr;
 
             network = new NetworkStructure(addr, terminal, event_queue);
+            network->set_key(argv[optind + 3]);
         }
 
         /* lolwut */
         else {
 
             std::cout << "+++ mode not indicated +++" << std::endl;
-            exit(-1);
+            return -1;
         }
 
         optind++;
@@ -180,36 +177,16 @@ int main(int argc, char **argv) {
     /* set max connections, tcp port and then start network */
     network->set_max_conn(max_conn);
     network->set_tcp_port(tcp_port);
-    network->start();
+    
+    if (!network->start()) {
+
+        std::cout << "unable to establish network structure" << std::endl;
+        return -2;
+    }
 
     while (true) {
         event_queue.front();
     }
-
-    /*NetworkStructure *network;
-    BlockingQueue<Event> event_queue;
-
-    if (argc == 3) {
-
-
-        struct sockaddr_in addr;
-        addr.sin_family = AF_INET;
-        addr.sin_port   = htons(atoi(argv[2]));
-        addr.sin_addr.s_addr   = inet_addr(argv[1]);
-        
-        network = new NetworkStructure(addr, true, event_queue);
-    } else {
-
-        network = new NetworkStructure(event_queue);
-    }
-
-    network->start();
-
-    while (true) {
-
-        event_queue.front();
-        
-    }*/
     
     return 0;
 }
