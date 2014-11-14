@@ -35,7 +35,7 @@
  *      4 bytes: key size, n (uint32_t)
  *      n bytes: key
  */
-#define PSHARE_CONN_REQ     0x01
+#define PSHARE_CONN_REQ 0x01
 
 /* HEADER:
  *      PSHARE_CONN_REP
@@ -77,6 +77,31 @@
  * PAYLOAD:
  *      null
  */
-#define PSHARE_CONN_BAD     0x03
+#define PSHARE_CONN_BAD 0x03
+
+/* HEADER:
+ *      PSHARE_SIBLING_ADD
+ *
+ * DESCRIPTION:
+ *      Whoever receives this header has a new sibling.
+ *
+ * PAYLOAD:
+ *      4 bytes: internet address (uint32_t)
+ *      2 bytes: listening port (uint16_t)
+ *      2 bytes: sibling number (uint16_t)
+ */
+#define PSHARE_SIBLING_ADD 0x04
+
+/* HEADER:
+ *      PSHARE_SIBLING_RMV
+ *
+ * DESCRIPTION:
+ *      Whoever receives this header has to remove a sibling that has left the
+ *      network.
+ *
+ * PAYLOAD:
+ *      2 bytes: sibling number (uint16_t)
+ */
+#define PSHARE_SIBLING_RMV 0x05
 
 #endif

@@ -47,7 +47,7 @@ Node::Node(unsigned short generation,
 bool Node::open() {
 
     /* close current socket if open */
-    ::close(sd);
+    this->close();
 
     if ((sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         return false;
@@ -60,7 +60,8 @@ bool Node::open() {
 
 void Node::close() {
 
-    ::close(sd);
+    if (sd >= 0)
+        ::close(sd);
 }
 
 void Node::listen() {
@@ -81,7 +82,7 @@ void Node::listen() {
     Event event(*this, this, Event::NODE_DISCONNECT);
     register_event(event);
 
-    ::close(sd);
+    this->close();
 }
 
 Node::~Node() {

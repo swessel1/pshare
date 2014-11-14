@@ -38,7 +38,7 @@ NetworkStructure::NetworkStructure(struct sockaddr_in parent_addr,
     EventRegistrar(queue), terminal(term) {
 
     /* create node and push into ancestry */
-    Node *node = new Node(0, parent_addr, network_queue);
+    Node *node = new Node(-1, parent_addr, network_queue);
     ancestry.push_back(node);
 }
 
@@ -132,7 +132,7 @@ bool NetworkStructure::handshake() {
                 addr.sin_addr   = {msg->read_uint32()};
                 addr.sin_port   = htons(msg->read_uint16());
                 
-                Node *node = new Node(0, addr, network_queue);
+                Node *node = new Node(-1, addr, network_queue);
                 ancestry.push_back(node);
             }
 
@@ -142,12 +142,18 @@ bool NetworkStructure::handshake() {
                 struct sockaddr_in addr;
                 addr.sin_family = AF_INET;
                 addr.sin_addr   = {msg->read_uint32()};
-                addr.sin_port   = htons(msg->read_uint16());
 
-                Node *node = new Node(0, addr, network_queue);
+                uint16_t p      = msg->read_uint16();
+                addr.sin_port   = htons(p);
+
+                Node *node = new Node(-1, addr, network_queue);
                 node->set_sibling_number(msg->read_uint16());
+                node->set_tcp_port(p);
                 siblings.push_back(node);
-                out() << "sibling port " << ntohs(addr.sin_port) << std::endl;
+                
+                out() << "  +sibling " << node->get_sibling_number() << " at "
+                << node->get_ineta() << ":" << ntohs(addr.sin_port)
+                << std::endl;
             }
         }
 
@@ -232,15 +238,27 @@ void NetworkStructure::control() {
             Node *node = static_cast<Node *>(e.get_data());
 
             /* if this is the parent node, commence a parent change. */
-            /*if (node == ancestry[0]) {
+            if (ancestry.size() > 0 && node == ancestry[0]) {
 
-                // TODO: parent change:
-            }*/
+                // TODO: parent change
+            }
 
             /* if this is child, remove from list */
-            /*else {
-                //children.remove(node);
-            }*/
+            else {
+
+                children.remove(node);
+
+                /* notify children that they lost a sibling */
+                if (!node->is_terminal()) {
+                    
+                    NetworkMessage m(PSHARE_SIBLING_RMV, tmpfile());
+                    m.write((uint16_t)node->get_sibling_number());
+
+                    std::list<Node *>::iterator i;
+                    for (i = children.begin(); i != children.end(); ++i)
+                        m.send((*i)->get_sd());
+                }
+            }
 
             out() << "node at " << node->get_ineta() << " disconnected"
             << std::endl;
@@ -317,10 +335,56 @@ void NetworkStructure::control() {
                          * add this node as a new child */
                         if (!sender->is_terminal()) {
 
-                            // TODO: relay info to children.
+                            NetworkMessage s_msg(PSHARE_SIBLING_ADD, tmpfile());
+                            s_msg.write((uint32_t)sender->get_addr().sin_addr.s_addr);
+                            s_msg.write((uint16_t)sender->get_tcp_port());
+                            s_msg.write((uint16_t)sender->get_sibling_number());
+
+                            std::list<Node *>::iterator i;
+                            for (i = children.begin(); i != children.end(); ++i)
+                                s_msg.send((*i)->get_sd());
                         }
 
-                         children.push_back(sender);
+                        children.push_back(sender);
+                    }
+                }
+            }
+
+            else if (msg->get_header() == PSHARE_SIBLING_ADD) {
+
+                /* new sibling in network, add it */
+                struct sockaddr_in addr;
+                addr.sin_family = AF_INET;
+                addr.sin_addr   = {msg->read_uint32()};
+
+                uint16_t p      = msg->read_uint16();
+                addr.sin_port   = htons(p);
+                
+                Node *node = new Node(-1, addr, network_queue);
+                node->set_sibling_number(msg->read_uint16());
+                node->set_tcp_port(p);
+                siblings.push_back(node);
+
+                out() << "  +sibling " << node->get_sibling_number() << " at "
+                << node->get_ineta() << ":" << ntohs(addr.sin_port)
+                << std::endl;
+            }
+
+            else if (msg->get_header() == PSHARE_SIBLING_RMV) {
+                out() << "sibling remove received" << std::endl;
+                uint16_t sibling = msg->read_uint16();
+
+                std::list<Node *>::iterator i;
+                for (i = siblings.begin(); i != siblings.end(); ++i) {
+                    
+                    if ((*i)->get_sibling_number() == sibling) {
+
+                        out() << "  -sibling " << (*i)->get_sibling_number()
+                        << " at " << (*i)->get_ineta() << ":"
+                        << (*i)->get_tcp_port() << std::endl;
+
+                        i = siblings.erase(i);
+                        break;
                     }
                 }
             }
