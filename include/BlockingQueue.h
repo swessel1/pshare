@@ -26,7 +26,9 @@
 
 #include <queue>
 #include <mutex>
+#include <thread>
 #include <condition_variable>
+#include "out.h"
 
 /**
  * @class   BlockingQueue
@@ -87,15 +89,17 @@ class BlockingQueue {
 
 template <typename T>
 void BlockingQueue<T>::push(const T& elem) {
-
-    std::unique_lock<std::mutex> safety(thread_safety);
     
-    backing_queue.push(elem);
-    condition.notify_all();
+    {
+        std::unique_lock<std::mutex> lock(thread_safety);
+        backing_queue.push(elem);
+    }
+
+    condition.notify_one();
 }
 
 template <typename T>
-void BlockingQueue<T>::pop() {
+void BlockingQueue<T>::pop() {  
 
     std::unique_lock<std::mutex> lock(thread_safety);
     backing_queue.pop();
@@ -105,10 +109,14 @@ template <typename T>
 T& BlockingQueue<T>::front() {
 
     std::unique_lock<std::mutex> lock(thread_safety);
-
+    
     /* if queue is empty wait for a new element, otherwise return front */
     condition.wait(lock, [=]{ return !backing_queue.empty(); });
-    return backing_queue.front();
+
+    T& retval = backing_queue.front();
+    backing_queue.pop();
+    
+    return retval;
 }
 
 #endif

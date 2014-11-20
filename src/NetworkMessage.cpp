@@ -27,7 +27,10 @@
 #include <sys/sendfile.h>
 #include <unistd.h>
 #include <iostream>
+#include <errno.h>
+#include <string.h>
 #include "NetworkMessage.h"
+#include "out.h"
 
 NetworkMessage::NetworkMessage() :
     header(0), payload(0) { }
@@ -144,12 +147,16 @@ bool NetworkMessage::recv(int sd) {
     char buffer[BUFFER_SIZE];
 
     /* receive header */
-    if (::recv(sd, &header, sizeof(uint8_t), 0) <= 0)
+    if (::recv(sd, &header, sizeof(uint8_t), 0) <= 0) {
+
         return false;
+    }
     
     /* receive message size */
-    if (::recv(sd, &payload_size, sizeof(uint32_t), 0) <= 0)
+    if (::recv(sd, &payload_size, sizeof(uint32_t), 0) <= 0) {
+
         return false;
+    }
 
     payload_size = ntohl(payload_size);
     
@@ -162,7 +169,7 @@ bool NetworkMessage::recv(int sd) {
             recv_len = ::recv(sd, buffer, BUFFER_SIZE, 0);
 
             if (recv_len <= 0) {
-
+                
                 /* connection was terminated */
                 fclose(payload);
                 payload = NULL;

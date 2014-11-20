@@ -29,6 +29,7 @@
 #include <thread>
 #include <unistd.h>
 #include "Node.h"
+#include "out.h"
 
 Node::Node(int sd, struct sockaddr_in addr, BlockingQueue<Event> &queue) :
     EventRegistrar(queue), sd(sd), addr(addr) { }
@@ -46,13 +47,27 @@ Node::Node(unsigned short generation,
 
 bool Node::open() {
 
+    int try_times = 3;
+    int c;
+
     /* close current socket if open */
     this->close();
-
+    
     if ((sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         return false;
 
-    if (connect(sd, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+    out() << "assigned SD = " << sd << std::endl;
+
+    while (try_times-- > 0) {
+
+        if ((c = connect(sd, (struct sockaddr *) &addr, sizeof(addr))) >= 0)
+            break;
+
+        out() << "connection failed, trying again in 3 seconds..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    }
+
+    if (c < 0)
         return false;
 
     return true;
@@ -70,7 +85,7 @@ void Node::listen() {
 
         /* construct empty message and let it receive from socket */
         NetworkMessage *msg = new NetworkMessage();
-        
+
         if (!msg->recv(sd))
             break; // oops!
 
@@ -80,6 +95,7 @@ void Node::listen() {
     }
 
     Event event(*this, this, Event::NODE_DISCONNECT);
+
     register_event(event);
 
     this->close();

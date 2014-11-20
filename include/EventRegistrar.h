@@ -24,6 +24,7 @@
 #ifndef EVENTREGISTRAR_H
 #define EVENTREGISTRAR_H
 
+#include <atomic>
 #include "BlockingQueue.h"
 #include "Event.h"
 
@@ -54,10 +55,13 @@ class EventRegistrar {
          * @param[in]   event   Reference to the event that will be registered
          *                      into the queue.
          */
-        void register_event(const Event &event);
+        void register_event(Event &event);
         
         /// Reference to the queue that this EventRegistrar registers to.
         BlockingQueue<Event>& event_queue;
+
+        /// Blocks this EventRegistrar from registering events.
+        std::atomic<bool> suppress_events;
     
 };
 

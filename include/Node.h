@@ -24,6 +24,7 @@
 #define NODE_H
 
 #include <string>
+#include <mutex>
 #include <netinet/in.h>
 #include "EventRegistrar.h"
 #include "NetworkMessage.h"

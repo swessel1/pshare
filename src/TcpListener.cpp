@@ -29,6 +29,7 @@
 #include <thread>
 #include "TcpListener.h"
 #include "Node.h"
+#include "out.h"
 
 TcpListener::TcpListener(BlockingQueue<Event> &event_queue,
                          unsigned short port) :
@@ -74,6 +75,7 @@ void TcpListener::listen() {
         socklen_t addr_size = sizeof(addr);
         
         int sock_recv = accept(sd, (struct sockaddr *) &addr_recv, &addr_size);
+        out() << "assigned SD=" << sd << std::endl;
         
         /* create a new node */
         Node *node = new Node(sock_recv, addr_recv, event_queue);

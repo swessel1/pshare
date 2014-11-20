@@ -44,7 +44,7 @@ NetworkStructure::NetworkStructure(struct sockaddr_in parent_addr,
 
 NetworkStructure::~NetworkStructure() {
 
-    // TODO: Complete implementation.
+    clear_lists(true, true, true);
 }
 
 BlockingQueue<Event>& NetworkStructure::get_network_queue() {
@@ -70,7 +70,7 @@ bool NetworkStructure::handshake() {
         /* ------------------ send handshake request ------------------- */
         out() << "sending handshake request to parent: "
         << ancestry[0]->get_ineta() << std::endl;
-
+        out() << "parent sd=" << ancestry[0]->get_sd() << std::endl;
         FILE *f  = tmpfile();
         
         NetworkMessage *msg = new NetworkMessage(PSHARE_CONN_REQ, f);
@@ -86,7 +86,7 @@ bool NetworkStructure::handshake() {
         
         if (!result) {
 
-            out(4) << "unable to send handshake request" << std::endl;
+            out(3) << "unable to send handshake request" << std::endl;
             return false;
         }
 
@@ -96,7 +96,7 @@ bool NetworkStructure::handshake() {
 
         if (!result) {
 
-            out(4) << "lost connection to parent without handshake response"
+            out(3) << "lost connection to parent without handshake response"
             << std::endl;
 
             delete msg;
@@ -106,7 +106,7 @@ bool NetworkStructure::handshake() {
         /* if we sent a bad key */
         if (msg->get_header() == PSHARE_CONN_BAD) {
 
-            out(4) << "parent refused connection: bad key" << std::endl;
+            out(3) << "parent refused connection: bad key" << std::endl;
             return false;
         }
 
@@ -134,6 +134,10 @@ bool NetworkStructure::handshake() {
                 
                 Node *node = new Node(-1, addr, network_queue);
                 ancestry.push_back(node);
+                node->set_tcp_port(ntohs(addr.sin_port));
+
+                out() << "  +ancestor " << node->get_ineta() << ":" <<
+                ntohs(addr.sin_port) << std::endl;
             }
 
             /* read siblings and insert into the list */
@@ -160,11 +164,11 @@ bool NetworkStructure::handshake() {
         /* parent not paying attention, unexpected header */
         else {
 
-            out(4) << "parent sent unexpected message" << std::endl;
+            out(3) << "parent sent unexpected message" << std::endl;
             return false;
         }
 
-        out(0) << "received local topology from parent" << std::endl;
+        out() << "received local topology from parent" << std::endl;
 
         delete msg;
 
@@ -172,11 +176,11 @@ bool NetworkStructure::handshake() {
         std::thread t(&Node::listen, ancestry[0]);
         t.detach();
     }
-
+    
     /* if failed, return false */
     else {
 
-        out(4) << "failed to connect to parent node" << std::endl;
+        out(3) << "failed to connect to parent node" << std::endl;
         return false;
     }
 
@@ -197,7 +201,7 @@ bool NetworkStructure::start() {
 
         if (!tcp_listener->start()) {
 
-            out(4) << "unable to bind port " << tcp_port << std::endl;
+            out(3) << "unable to bind port " << tcp_port << std::endl;
             return false;
         }
 
@@ -223,8 +227,8 @@ void NetworkStructure::control() {
 
             Node *node = static_cast<Node *>(e.get_data());
 
-            out() << "node at " << node->get_ineta() << " connected"
-            << std::endl;
+            out() << "node at " << node->get_ineta()
+            << " connected" << std::endl;
 
             std::thread t(&Node::listen, node);
             t.detach();
@@ -240,7 +244,18 @@ void NetworkStructure::control() {
             /* if this is the parent node, commence a parent change. */
             if (ancestry.size() > 0 && node == ancestry[0]) {
 
+                out() << "current ancestor " << ancestry[0]->get_ineta() <<":"
+                << ancestry[0]->get_tcp_port() << std::endl;
+
+                out() << "current disc node " << node->get_ineta() <<":"
+                << node->get_tcp_port() << std::endl;
+
                 // TODO: parent change
+                if (!parent_change()) {
+
+                    out(3) << "parent change failed!" << std::endl;
+                    exit(-1);
+                }
             }
 
             /* if this is child, remove from list */
@@ -258,12 +273,12 @@ void NetworkStructure::control() {
                     for (i = children.begin(); i != children.end(); ++i)
                         m.send((*i)->get_sd());
                 }
+
+                out() << "node at " << node->get_ineta()
+                << " disconnected" << std::endl;
+
+                delete node;
             }
-
-            out() << "node at " << node->get_ineta() << " disconnected"
-            << std::endl;
-
-            delete node;
         }
 
         else if (e.get_flag() == Event::NODE_MSG_RECEIVED) {
@@ -298,7 +313,7 @@ void NetworkStructure::control() {
 
                 /* key is valid, send network topology */
                 else {
-
+                    
                     NetworkMessage topology_msg(PSHARE_CONN_REP, tmpfile());
 
                     topology_msg.write((uint16_t)ancestry.size());
@@ -389,10 +404,261 @@ void NetworkStructure::control() {
                 }
             }
 
+            else if (msg->get_header() == PSHARE_NET_TOP) {
+
+                clear_lists(false, true, false);
+
+                /* remove all except the position 0 (parent) */
+                while (ancestry.size() > 1) {
+
+                    delete ancestry[ancestry.size() - 1];
+                    ancestry.pop_back();
+                }
+
+                uint16_t ancestry_size = msg->read_uint16();
+                uint16_t sibling_size  = msg->read_uint16();
+                out() << "received " << ancestry_size << " ancestors and "
+                << sibling_size << " siblings from parents" << std::endl;
+
+                /* set parent generation, our generation is parent + 1 */
+                uint16_t parent_generation = msg->read_uint16();
+                ancestry[0]->set_generation(parent_generation);
+                generation     = parent_generation + 1;
+                sibling_number = msg->read_uint16();
+
+                /* read ancestry and insert into vector */
+                for (uint16_t i = 0; i < ancestry_size; i++) {
+
+                    struct sockaddr_in addr;
+                    addr.sin_family = AF_INET;
+                    addr.sin_addr   = {msg->read_uint32()};
+                    addr.sin_port   = htons(msg->read_uint16());
+                    
+                    Node *node = new Node(-1, addr, network_queue);
+                    ancestry.push_back(node);
+
+                    out() << "  +ancestor " << node->get_ineta() << ":" <<
+                    ntohs(addr.sin_port) << std::endl;
+                }
+
+                /* read siblings and insert into the list */
+                for (uint16_t i = 0; i < sibling_size; i++) {
+
+                    struct sockaddr_in addr;
+                    addr.sin_family = AF_INET;
+                    addr.sin_addr   = {msg->read_uint32()};
+
+                    uint16_t p      = msg->read_uint16();
+                    addr.sin_port   = htons(p);
+
+                    Node *node = new Node(-1, addr, network_queue);
+                    node->set_sibling_number(msg->read_uint16());
+                    node->set_tcp_port(p);
+                    siblings.push_back(node);
+                    
+                    out() << "  +sibling " << node->get_sibling_number() << " at "
+                    << node->get_ineta() << ":" << ntohs(addr.sin_port)
+                    << std::endl;
+                }
+
+                // relay info to children
+                send_topology_to_children();
+            }
+
             delete msg;
         }
+    }
+}
 
-        network_queue.pop();
+bool NetworkStructure::parent_change() {
+
+    out() << "initiating parent change" << std::endl;
+
+    Node *np         = nullptr; // new parent
+    bool this_parent = false; // indicates that this process is parent
+
+    /* go through siblings to determine the sibling with the lowest sibling
+     * number */
+
+    out() << "looking for potential parents" << std::endl;
+    std::list<Node *>::iterator i;
+    for (i = siblings.begin(); i != siblings.end(); ++i) {
+
+        unsigned short sibnum = (*i)->get_sibling_number();
+
+        /* 1 is the lowest possible sibling number */
+        if (sibnum == 1) {
+
+            np = (*i);
+            break;
+        }
+
+        /* if new parent is null, set it initially or if current sibling
+         * has a lower number, set it as new candidate parent*/
+        else if (np == nullptr || sibnum < np->get_sibling_number()) {
+
+            np = (*i);
+        }
+    }
+    
+    /* check if this node is lower than other siblings */
+    if (np == nullptr || sibling_number < np->get_sibling_number()) {
+
+        out() << "i have the lowest sibling number" << std::endl;
+        this_parent = true;
+        np = nullptr;
+    }
+
+    /* this is the only sibling, connect to an ancestor */
+    if (this_parent) {
+
+        std::vector<Node *> temp = ancestry;
+        ancestry.clear();
+
+        std::list<Node *>::iterator i;
+        for (i = siblings.begin(); i != siblings.end(); ++i)
+            if (*i != np)
+                delete *i;
+        siblings.clear();
+
+        for (unsigned int i = 1; i < temp.size(); i++) {
+
+            ancestry.push_back(temp[i]);
+
+            if (!handshake())
+                ancestry.pop_back();
+            else
+                break;
+        }
+
+        /*while (temp.size() > 0) {
+
+            if (ancestry.size() > 0 && temp[temp.size() - 1] != ancestry[0]){
+                out() << "node in temp not parent" << std::endl;
+                out() << ancestry[0] << " vs " << temp[temp.size() - 1] << std::endl;
+                //delete temp[temp.size() - 1];
+            }
+            temp.pop_back();
+        }*/
+
+        if (ancestry.size() == 0) {
+            
+            out() << "could not connect to any ancestor" << std::endl;
+
+            if (terminal) {
+                
+                out(4) << "I cannot act as root: terminal node" << std::endl;
+                return false;
+            }
+
+            out() << "i am the new root!" << std::endl;
+
+            generation = 0;
+            sibling_number = 0;
+        }
+    }
+
+    /* if this is not the new parent, connect to the new parent */
+    else {
+
+        out() << "a new parent was found" << std::endl;
+
+        /* clear siblings except new parent */
+        std::list<Node *>::iterator i;
+        for (i = siblings.begin(); i != siblings.end(); ++i)
+            if (*i != np)
+                delete *i;
+        siblings.clear();
+
+        /* clear ancestors except new parent */
+        while (ancestry.size() > 0) {
+
+            if (ancestry[ancestry.size() - 1] != np)
+                delete ancestry[ancestry.size() - 1];
+            ancestry.pop_back();
+        }
+
+        /* add the new parent */
+        ancestry.push_back(np);
+
+        if (!handshake()) {
+
+            out(3) << "could not connect to new parent" << std::endl;
+            return false;
+        }
+
+        out() << "connected to new parent" << std::endl;
+    }
+
+    /* relay new topology to children */
+
+    send_topology_to_children();
+    
+    out() << "parent change succeeded!" << std::endl;
+
+    return true;
+}
+
+void NetworkStructure::send_topology_to_children() {
+
+    out() << "relaying topology to children" << std::endl;
+    
+    std::list<Node *>::iterator i;
+    for (i = children.begin(); i != children.end(); ++i) {
+
+        NetworkMessage topology_msg(PSHARE_NET_TOP, tmpfile());
+
+        topology_msg.write((uint16_t)ancestry.size());
+        topology_msg.write((uint16_t)children.size());
+        topology_msg.write((uint16_t)generation);
+
+        topology_msg.write((uint16_t)(*i)->get_sibling_number());
+
+        for (uint16_t m = 0; m < ancestry.size(); m++) {
+
+            struct sockaddr_in addr = ancestry[m]->get_addr();
+
+            topology_msg.write((uint32_t)addr.sin_addr.s_addr);
+            topology_msg.write((uint16_t)ntohs(addr.sin_port));
+        }
+
+        std::list<Node *>::iterator j;
+        for (j = children.begin(); j != children.end(); ++j) {
+
+            if (*i == *j)
+                continue; /* skip children self */
+
+            struct sockaddr_in addr = (*j)->get_addr();
+
+            topology_msg.write((uint32_t)addr.sin_addr.s_addr);
+            topology_msg.write((uint16_t)((*j)->get_tcp_port()));
+            topology_msg.write(
+                (uint16_t)((*j)->get_sibling_number())
+            );
+        }
+
+        topology_msg.send((*i)->get_sd());
+    }
+}
+
+void NetworkStructure::clear_lists(bool a, bool s, bool c) {
+    
+    out() << "clearing all siblings" << std::endl;
+    if (s) {
+
+        std::list<Node *>::iterator i;
+        for (i = siblings.begin(); i != siblings.end(); ++i)
+            delete *i;
+        siblings.clear();
+    }
+    
+    out() << "clearing all children" << std::endl;
+    if (c) {
+
+        std::list<Node *>::iterator i;
+        for (i = children.begin(); i != children.end(); ++i)
+            delete *i;
+        children.clear();
     }
 }
 

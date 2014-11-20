@@ -176,6 +176,32 @@ class NetworkStructure : public EventRegistrar {
          * @returns `true` if handshake was successful, `false` otherwise.
          */
         bool handshake();
+
+        /**
+         * @brief Executes a parent change.
+         *
+         * Function should be called only if connection to parent is
+         * severed.
+         *
+         * @returns `true` if parent change was successful, `false` otherwise.
+         */
+        bool parent_change();
+
+        /**
+         * @brief Clears selected lists.
+         *
+         * Frees any Node pointers remaining in the lists.
+         *
+         * @param[in]   a   Clears ancestry list.
+         * @param[in]   s   Clears sibling list.
+         * @param[in]   c   Clears children list.
+         */
+        void clear_lists(bool a, bool s, bool c);
+
+        /**
+         * @brief Sends a topological information to children
+         */
+        void send_topology_to_children();
         
         /// The event queue that is handled by the network structure.
         BlockingQueue<Event> network_queue;

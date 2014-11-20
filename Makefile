@@ -8,10 +8,10 @@ pshare: $(OBJ)
 	$(COMPILER) $(CFLAGS) -o $@ $^ -pthread
 
 main.o: main.cpp
-	$(COMPILER) $(CFLAGS) -c -o main.o main.cpp
+	$(COMPILER) $(CFLAGS) -c -o main.o main.cpp -pthread
 
 %.o: src/%.cpp
-	$(COMPILER) $(CFLAGS) -c -o $@ $<
+	$(COMPILER) $(CFLAGS) -c -o $@ $< -pthread
 
 clean:
 	rm -f *.o pshare

@@ -22,11 +22,13 @@
  ******************************************************************************/
 
 #include "EventRegistrar.h"
+#include "out.h"
 
 EventRegistrar::EventRegistrar(BlockingQueue<Event> &event_queue) :
-    event_queue(event_queue) { }
+    event_queue(event_queue), suppress_events(false) { }
 
-void EventRegistrar::register_event(const Event &event) {
+void EventRegistrar::register_event(Event &event) {
 
-    event_queue.push(event);
+    if (!suppress_events)
+        event_queue.push(event);
 }
