@@ -56,8 +56,6 @@ bool Node::open() {
     if ((sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         return false;
 
-    out() << "assigned SD = " << sd << std::endl;
-
     while (try_times-- > 0) {
 
         if ((c = connect(sd, (struct sockaddr *) &addr, sizeof(addr))) >= 0)

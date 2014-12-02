@@ -70,7 +70,7 @@ bool NetworkStructure::handshake() {
         /* ------------------ send handshake request ------------------- */
         out() << "sending handshake request to parent: "
         << ancestry[0]->get_ineta() << std::endl;
-        out() << "parent sd=" << ancestry[0]->get_sd() << std::endl;
+
         FILE *f  = tmpfile();
         
         NetworkMessage *msg = new NetworkMessage(PSHARE_CONN_REQ, f);
@@ -243,12 +243,6 @@ void NetworkStructure::control() {
 
             /* if this is the parent node, commence a parent change. */
             if (ancestry.size() > 0 && node == ancestry[0]) {
-
-                out() << "current ancestor " << ancestry[0]->get_ineta() <<":"
-                << ancestry[0]->get_tcp_port() << std::endl;
-
-                out() << "current disc node " << node->get_ineta() <<":"
-                << node->get_tcp_port() << std::endl;
 
                 // TODO: parent change
                 if (!parent_change()) {
@@ -525,21 +519,24 @@ bool NetworkStructure::parent_change() {
 
             ancestry.push_back(temp[i]);
 
-            if (!handshake())
+            if (!handshake()) {
+                
                 ancestry.pop_back();
-            else
-                break;
-        }
-
-        /*while (temp.size() > 0) {
-
-            if (ancestry.size() > 0 && temp[temp.size() - 1] != ancestry[0]){
-                out() << "node in temp not parent" << std::endl;
-                out() << ancestry[0] << " vs " << temp[temp.size() - 1] << std::endl;
-                //delete temp[temp.size() - 1];
+                //delete temp[i];
+                //temp.pop_back();
             }
-            temp.pop_back();
-        }*/
+
+            else {
+
+                /*while (temp.size() > 0) {
+
+                    delete temp[temp.size() - 1];
+                    temp.pop_back();
+                }*/
+                
+                break;
+            }
+        }
 
         if (ancestry.size() == 0) {
             
@@ -592,6 +589,7 @@ bool NetworkStructure::parent_change() {
 
     /* relay new topology to children */
 
+    out() << "sibling count: " << siblings.size() << std::endl;
     send_topology_to_children();
     
     out() << "parent change succeeded!" << std::endl;
@@ -609,7 +607,10 @@ void NetworkStructure::send_topology_to_children() {
         NetworkMessage topology_msg(PSHARE_NET_TOP, tmpfile());
 
         topology_msg.write((uint16_t)ancestry.size());
-        topology_msg.write((uint16_t)children.size());
+        if (children.size() > 0)
+            topology_msg.write((uint16_t)(children.size() - 1));
+        else
+            topology_msg.write((uint16_t)0);
         topology_msg.write((uint16_t)generation);
 
         topology_msg.write((uint16_t)(*i)->get_sibling_number());
